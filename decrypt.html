@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>QR Cipher - Decrypt QR Code</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Scan and decrypt encrypted QR codes back to readable text. Uses AES-GCM decryption. 100% client-side." />
+<style>body{background-color:#111827}</style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+
+<header class="w-full flex items-center justify-between p-4 bg-gray-800 shadow-md fixed top-0 left-0 z-10">
+  <button id="back-btn" class="text-xl font-bold hover:text-blue-500">←</button>
+  <span class="font-semibold">Decode QR</span>
+  <div></div>
+</header>
+
+<main class="pt-24 flex flex-col items-center px-4 space-y-4 w-full max-w-lg mx-auto">
+
+  <video id="preview" class="w-full rounded-lg shadow-inner bg-gray-800 border border-gray-700" autoplay muted playsinline></video>
+
+  <div class="relative w-full mt-2">
+    <input id="passphrase" type="password"
+      class="w-full p-3 pr-10 rounded-lg shadow-inner bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      placeholder="Password / passphrase">
+    <button id="toggle-pass"
+      class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-200 p-1 rounded hover:bg-gray-700 flex items-center justify-center">
+      <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+             a10.05 10.05 0 012.107-3.444m2.401-2.401
+             A9.953 9.953 0 0112 5c4.477 0 8.268 2.943
+             9.542 7a9.953 9.953 0 01-1.091 2.181
+             M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M3 3l18 18" />
+      </svg>
+    </button>
+  </div>
+
+  <button id="capture-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg transition">Capture QR</button>
+
+  <div id="note-display" class="hidden w-full p-3 rounded-lg bg-blue-900 border border-blue-700 font-semibold"></div>
+  <div id="decrypted" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 min-h-[50px] whitespace-pre-wrap"></div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+
+</main>
+
+<script type="module" src="/src/decrypt.js"></script>
+</body>
+</html>

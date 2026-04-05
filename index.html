@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR Cipher - Encrypt & Decrypt Text Using QR Codes</title>
+    <meta name="description" content="Encrypt sensitive text into QR codes and decrypt them back using AES-GCM encryption. 100% client-side, no server required." />
+  </head>
+  <body>
+    <div class="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
+      <div class="text-center space-y-6">
+        <h1 class="text-4xl font-bold">QR Cipher</h1>
+        <p class="text-gray-400">Encrypt and decrypt text using QR codes</p>
+        <div class="space-y-4">
+          <a href="/encrypt.html" class="block w-64 mx-auto bg-blue-600 hover:bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold transition">
+            Encrypt Text
+          </a>
+          <a href="/decrypt.html" class="block w-64 mx-auto bg-green-600 hover:bg-green-500 text-white py-3 px-6 rounded-lg font-semibold transition">
+            Decrypt QR
+          </a>
+        </div>
+      </div>
+    </div>
+    <script type="module">import "/src/input.css";</script>
+  </body>
+</html>
