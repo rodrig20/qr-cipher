@@ -9,6 +9,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        index: resolve(__dirname, 'index.html'),
         encrypt: resolve(__dirname, 'encrypt.html'),
         decrypt: resolve(__dirname, 'decrypt.html'),
       },
