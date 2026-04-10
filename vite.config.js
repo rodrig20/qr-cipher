@@ -2,6 +2,7 @@ import { resolve } from 'path'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  base: '/qr-cipher/',
   optimizeDeps: {
     include: ['argon2-browser'],
   },
