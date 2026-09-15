@@ -4,7 +4,7 @@ import {
   setupPasswordToggle,
   setLoading,
 } from "./shared";
-import "/src/input.css";
+import "./input.css";
 
 // --- Encrypt-only helpers ---
 
@@ -162,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const charCount = document.getElementById("char-count");
 
   document.getElementById("back-btn").onclick = () =>
-    (window.location.href = "index.html");
+    (window.location.href = "./index.html");
 
   setupPasswordToggle(passwordInput, togglePassBtn, eyeIcon);
 

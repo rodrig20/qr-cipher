@@ -4,7 +4,7 @@ import {
   setupPasswordToggle,
   setLoading,
 } from "./shared";
-import "/src/input.css";
+import "./input.css";
 
 // --- Decrypt-only helpers ---
 
@@ -194,7 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const ctx = canvas.getContext("2d");
   const captureBtn = document.getElementById("capture-btn");
 
-  backButton.onclick = () => (window.location.href = "index.html");
+  backButton.onclick = () => (window.location.href = "./index.html");
 
   setupPasswordToggle(passwordInput, togglePassBtn, eyeIcon);
 
