@@ -4,24 +4,91 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>QR Cipher - Encrypt & Decrypt Text Using QR Codes</title>
-    <meta name="description" content="Encrypt sensitive text into QR codes and decrypt them back using AES-GCM encryption. 100% client-side, no server required." />
+    <title>QR Cipher - Encrypt & Decrypt Text with QR Codes</title>
+    <meta name="description" content="Encrypt and decrypt sensitive text inside QR codes using AES-GCM and Argon2id locally in your browser." />
+    <style>body{background-color:#09090b}</style>
   </head>
-  <body>
-    <div class="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
-      <div class="text-center space-y-6">
-        <h1 class="text-4xl font-bold">QR Cipher</h1>
-        <p class="text-gray-400">Encrypt and decrypt text using QR codes</p>
-        <div class="space-y-4">
-          <a href="./encrypt.html" class="block w-64 mx-auto bg-blue-600 hover:bg-blue-500 text-white py-3 px-6 rounded-lg font-semibold transition">
-            Encrypt Text
-          </a>
-          <a href="./decrypt.html" class="block w-64 mx-auto bg-green-600 hover:bg-green-500 text-white py-3 px-6 rounded-lg font-semibold transition">
-            Decrypt QR
-          </a>
+  <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans antialiased">
+
+    <!-- Top Bar -->
+    <header class="border-b border-zinc-800/80 px-6 py-4">
+      <div class="max-w-2xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-6 h-6 rounded bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-xs tracking-tighter">
+            QR
+          </div>
+          <span class="font-semibold text-sm tracking-tight text-zinc-100">QR Cipher</span>
         </div>
+        <span class="text-xs text-zinc-400 font-mono">offline / local</span>
       </div>
-    </div>
-    <script type="module">import "./src/input.css";</script>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-2xl mx-auto px-6 py-12 w-full flex flex-col justify-center">
+      
+      <div class="space-y-2 mb-8">
+        <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-100">
+          Encrypt and scan QR codes
+        </h1>
+        <p class="text-sm text-zinc-400 max-w-lg leading-relaxed">
+          Protect sensitive notes, keys, and credentials inside encrypted QR codes. All cryptography runs entirely on your device with zero server interaction.
+        </p>
+      </div>
+
+      <!-- Action Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        
+        <!-- Encrypt -->
+        <a href="./encrypt.html" class="flex flex-col justify-between p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/90 hover:border-zinc-700 transition group">
+          <div>
+            <div class="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-200 mb-4 group-hover:bg-zinc-700 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h2 class="font-medium text-sm text-zinc-100">Encrypt Text</h2>
+            <p class="text-xs text-zinc-400 mt-1.5 leading-relaxed">
+              Write a note, set a passphrase, and generate an encrypted QR code to save or print.
+            </p>
+          </div>
+          <div class="mt-6 flex items-center text-xs font-medium text-zinc-300 group-hover:text-white">
+            <span>Create code</span>
+            <span class="ml-1 group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </a>
+
+        <!-- Decrypt -->
+        <a href="./decrypt.html" class="flex flex-col justify-between p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/90 hover:border-zinc-700 transition group">
+          <div>
+            <div class="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-200 mb-4 group-hover:bg-zinc-700 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <h2 class="font-medium text-sm text-zinc-100">Scan QR Code</h2>
+            <p class="text-xs text-zinc-400 mt-1.5 leading-relaxed">
+              Continuous live camera scanner or image upload with instant passphrase decryption.
+            </p>
+          </div>
+          <div class="mt-6 flex items-center text-xs font-medium text-zinc-300 group-hover:text-white">
+            <span>Open scanner</span>
+            <span class="ml-1 group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </a>
+
+      </div>
+
+      <!-- Info Footer -->
+      <div class="mt-10 pt-6 border-t border-zinc-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-zinc-500 gap-2">
+        <span>Argon2id + AES-256-GCM (HMAC-SHA256)</span>
+        <span>Zero network data transmission</span>
+      </div>
+
+    </main>
+
+    <script type="module">
+      import "./src/input.css";
+    </script>
   </body>
 </html>

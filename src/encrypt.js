@@ -3,6 +3,8 @@ import {
   deriveKeys,
   setupPasswordToggle,
   setLoading,
+  showToast,
+  copyToClipboard,
 } from "./shared";
 import "./input.css";
 
@@ -63,8 +65,6 @@ function buildQRText(note, payloadB64) {
   return note ? `${note}|${payloadB64}` : payloadB64;
 }
 
-// --- QR rendering ---
-
 function addWhiteBorder(canvas) {
   const borderSize = 16;
   const ctx = canvas.getContext("2d");
@@ -78,43 +78,79 @@ function addWhiteBorder(canvas) {
   ctx.putImageData(qrImageData, borderSize, borderSize);
 }
 
-function generateQRCode(qrText, qrDiv, qrContainer) {
+function renderQRCodeCanvas(qrText, qrDiv, qrContainer) {
   qrDiv.innerHTML = "";
-  QRCode.toCanvas(qrText, {
-    width: 256,
-    margin: 0,
-    errorCorrectionLevel: "H",
-  }, function (error, canvas) {
-    if (error) {
-      console.error("QR generation error:", error);
-      alert(`Failed to generate QR code: ${error.message || "unknown error"}. The text may be too long.`);
-      return;
-    }
-    qrDiv.appendChild(canvas);
-    addWhiteBorder(canvas);
-    qrContainer.classList.remove("hidden");
-  });
+  QRCode.toCanvas(
+    qrText,
+    {
+      width: 280,
+      margin: 1,
+      errorCorrectionLevel: "M",
+    },
+    function (error, canvas) {
+      if (error) {
+        console.error("QR generation error:", error);
+        showToast("Error generating QR code: text may be too long.", "error");
+        return;
+      }
+      qrDiv.appendChild(canvas);
+      addWhiteBorder(canvas);
+      qrContainer.classList.remove("hidden");
+      qrContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      showToast("QR code generated successfully.", "success");
+    },
+  );
 }
 
-// --- Main encrypt action ---
+function showEncryptAlert(message, type = "warning") {
+  const alertEl = document.getElementById("encrypt-alert");
+  const textEl = document.getElementById("alert-text");
+  if (!alertEl || !textEl) return;
 
-async function encrypt(noteInput, plainTextInput, passwordInput, qrDiv, qrContainer, encryptBtn) {
-  const note = noteInput.value;
+  alertEl.classList.remove(
+    "hidden",
+    "bg-red-950/40", "border-red-900/60", "text-red-300",
+    "bg-zinc-800", "border-zinc-700", "text-zinc-300",
+  );
+
+  if (type === "error") {
+    alertEl.classList.add("bg-red-950/40", "border-red-900/60", "text-red-300");
+  } else {
+    alertEl.classList.add("bg-zinc-800", "border-zinc-700", "text-zinc-300");
+  }
+
+  textEl.textContent = message;
+}
+
+function hideEncryptAlert() {
+  const alertEl = document.getElementById("encrypt-alert");
+  if (alertEl) alertEl.classList.add("hidden");
+}
+
+let currentPayloadB64 = "";
+
+async function handleEncrypt(elements) {
+  const { noteInput, plainTextInput, passwordInput, qrDiv, qrContainer, encryptBtn, noteBadge } = elements;
+  hideEncryptAlert();
+
+  const note = noteInput.value.trim();
   const text = plainTextInput.value;
   const password = passwordInput.value;
 
   if (!text || text.trim() === "") {
-    alert("Please enter the text you want to encrypt.");
+    showEncryptAlert("Please enter the text you want to encrypt.");
+    plainTextInput.focus();
     return;
   }
 
   if (!password || password.trim() === "") {
-    alert("Please enter a password / passphrase.");
+    showEncryptAlert("Please enter a passphrase.");
+    passwordInput.focus();
     return;
   }
 
-  const originalText = encryptBtn.textContent;
-  setLoading(encryptBtn, true, originalText);
+  const originalContent = encryptBtn.innerHTML;
+  setLoading(encryptBtn, true, "Encrypting...");
 
   try {
     const sanitizedNote = sanitizeNote(note);
@@ -122,33 +158,23 @@ async function encrypt(noteInput, plainTextInput, passwordInput, qrDiv, qrContai
     const { ciphertext, hmac } = await encryptText(text, password, salt, iv);
     const payloadB64 = encodePayload(ciphertext, salt, iv, hmac);
     const qrText = buildQRText(sanitizedNote, payloadB64);
+    currentPayloadB64 = qrText;
 
-    generateQRCode(qrText, qrDiv, qrContainer);
+    if (sanitizedNote && noteBadge) {
+      noteBadge.textContent = sanitizedNote;
+      noteBadge.classList.remove("hidden");
+    } else if (noteBadge) {
+      noteBadge.classList.add("hidden");
+    }
+
+    renderQRCodeCanvas(qrText, qrDiv, qrContainer);
   } catch (err) {
     console.error("Encryption error:", err);
-    alert(`Encryption failed: ${err.message || "unknown error occurred"}.`);
+    showEncryptAlert(`Encryption failed: ${err.message || "unexpected error"}.`, "error");
   } finally {
-    setLoading(encryptBtn, false, originalText);
-    passwordInput.value = "";
+    setLoading(encryptBtn, false, originalContent);
   }
 }
-
-// --- Download ---
-
-function setupDownload(qrDiv, noteInput) {
-  document.getElementById("download-btn").onclick = () => {
-    const canvas = qrDiv.querySelector("canvas");
-    if (!canvas) return;
-    const note = noteInput.value.trim();
-    const filename = note ? `qr-cipher_${sanitizeNote(note)}.png` : "qr-cipher.png";
-    const a = document.createElement("a");
-    a.href = canvas.toDataURL("image/png");
-    a.download = filename;
-    a.click();
-  };
-}
-
-// --- Init ---
 
 document.addEventListener("DOMContentLoaded", () => {
   const noteInput = document.getElementById("note");
@@ -160,25 +186,59 @@ document.addEventListener("DOMContentLoaded", () => {
   const eyeIcon = document.getElementById("eye-icon");
   const encryptBtn = document.getElementById("encrypt-btn");
   const charCount = document.getElementById("char-count");
-
-  document.getElementById("back-btn").onclick = () =>
-    (window.location.href = "./index.html");
+  const noteBadge = document.getElementById("result-note-badge");
+  const downloadBtn = document.getElementById("download-btn");
+  const copyPayloadBtn = document.getElementById("copy-payload-btn");
+  const copyPayloadText = document.getElementById("copy-payload-text");
 
   setupPasswordToggle(passwordInput, togglePassBtn, eyeIcon);
 
-  // Character counter
   function updateCharCount() {
     const count = plainTextInput.value.length;
-    charCount.textContent = count;
-    charCount.classList.toggle("text-red-400", count > 800);
-    charCount.classList.toggle("text-gray-400", count <= 800);
+    charCount.textContent = `${count} / 800`;
+    if (count > 800) {
+      charCount.className = "text-red-400 font-mono text-[11px] font-medium";
+    } else {
+      charCount.className = "text-zinc-500 font-mono text-[11px]";
+    }
   }
 
-  updateCharCount();
   plainTextInput.addEventListener("input", updateCharCount);
+  updateCharCount();
 
-  encryptBtn.onclick = () =>
-    encrypt(noteInput, plainTextInput, passwordInput, qrDiv, qrContainer, encryptBtn);
+  const elements = { noteInput, plainTextInput, passwordInput, qrDiv, qrContainer, encryptBtn, noteBadge };
 
-  setupDownload(qrDiv, noteInput);
+  encryptBtn.onclick = () => handleEncrypt(elements);
+
+  plainTextInput.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      handleEncrypt(elements);
+    }
+  });
+
+  passwordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleEncrypt(elements);
+    }
+  });
+
+  downloadBtn.onclick = () => {
+    const canvas = qrDiv.querySelector("canvas");
+    if (!canvas) return;
+    const note = noteInput.value.trim();
+    const filename = note ? `qr-cipher_${sanitizeNote(note)}.png` : "qr-cipher.png";
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = filename;
+    a.click();
+    showToast("QR code image downloaded.", "success");
+  };
+
+  copyPayloadBtn.onclick = () => {
+    if (currentPayloadB64) {
+      copyToClipboard(currentPayloadB64, copyPayloadText);
+    }
+  };
 });

@@ -1,60 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="./favicon.svg">
-<title>QR Cipher - Encrypt Text to QR Code</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Convert any text into an encrypted, password-protected QR code using AES-GCM. All processing happens locally in your browser." />
-<style>body{background-color:#111827}</style>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <title>QR Cipher - Encrypt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Convert confidential text into an encrypted, password-protected QR code." />
+  <style>body{background-color:#09090b}</style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans antialiased">
 
-<header class="w-full flex items-center justify-between p-4 bg-gray-800 shadow-md fixed top-0 left-0 z-10">
-  <button id="back-btn" class="text-xl font-bold hover:text-blue-500">←</button>
-  <span class="font-semibold">Encode QR</span>
-  <div></div>
-</header>
+  <!-- Header -->
+  <header class="border-b border-zinc-800/80 px-4 sm:px-6 py-3.5 sticky top-0 bg-zinc-950/90 backdrop-blur z-20">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      <a href="./index.html" class="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition">
+        <span>←</span>
+        <span>Home</span>
+      </a>
+      <span class="text-xs font-medium text-zinc-300">Encrypt Text</span>
+      <a href="./decrypt.html" class="text-xs text-zinc-400 hover:text-zinc-200 transition">
+        Scan QR →
+      </a>
+    </div>
+  </header>
 
-<main class="pt-24 flex flex-col items-center px-4 space-y-4 w-full max-w-lg mx-auto">
+  <!-- Main Container -->
+  <main class="flex-1 max-w-xl mx-auto px-4 py-8 w-full flex flex-col space-y-6">
 
-  <input id="note"
-    class="w-full p-3 rounded-lg shadow-inner bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    placeholder="Note title / identifier">
+    <!-- Form Section -->
+    <div class="border border-zinc-800 bg-zinc-900/40 rounded-xl p-5 space-y-4">
+      
+      <!-- Note / Identifier -->
+      <div class="space-y-1.5">
+        <label for="note" class="block text-xs font-medium text-zinc-300">
+          Identifier / Title <span class="text-zinc-500 font-normal">(public in QR, optional)</span>
+        </label>
+        <input id="note" type="text"
+          class="w-full px-3 py-2 text-sm rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition"
+          placeholder="e.g. Wi-Fi Password, Backup Seed, Note #1">
+      </div>
 
-  <textarea id="plaintext"
-    class="w-full p-3 rounded-lg shadow-inner bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    rows="4" placeholder="Text to encrypt"></textarea>
-  <div id="char-count" class="text-sm text-gray-400 self-end">0</div>
+      <!-- Secret Plaintext -->
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <label for="plaintext" class="font-medium text-zinc-300">Confidential Text</label>
+          <span id="char-count" class="text-zinc-500 font-mono text-[11px]">0 / 800</span>
+        </div>
+        <textarea id="plaintext" rows="4"
+          class="w-full p-3 text-sm rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition font-mono"
+          placeholder="Type or paste the secret text to encrypt..."></textarea>
+      </div>
 
-  <div class="relative w-full">
-    <input id="passphrase" type="password"
-      class="w-full p-3 pr-10 rounded-lg shadow-inner bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      placeholder="Password / passphrase">
-    <button id="toggle-pass"
-      class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-200 p-1 rounded hover:bg-gray-700 flex items-center justify-center">
-      <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
-             a10.05 10.05 0 012.107-3.444m2.401-2.401
-             A9.953 9.953 0 0112 5c4.477 0 8.268 2.943
-             9.542 7a9.953 9.953 0 01-1.091 2.181
-             M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M3 3l18 18" />
-      </svg>
-    </button>
-  </div>
+      <!-- Passphrase -->
+      <div class="space-y-1.5">
+        <label for="passphrase" class="block text-xs font-medium text-zinc-300">
+          Encryption Passphrase
+        </label>
+        <div class="relative">
+          <input id="passphrase" type="password"
+            class="w-full pl-3 pr-10 py-2 text-sm rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition"
+            placeholder="Choose a strong password or passphrase">
+          <button id="toggle-pass" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-200">
+            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+                   a10.05 10.05 0 012.107-3.444m2.401-2.401
+                   A9.953 9.953 0 0112 5c4.477 0 8.268 2.943
+                   9.542 7a9.953 9.953 0 01-1.091 2.181
+                   M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 3l18 18" />
+            </svg>
+          </button>
+        </div>
+        <p class="text-[11px] text-zinc-500">Derived locally with Argon2id (never transmitted).</p>
+      </div>
 
-  <button id="encrypt-btn"
-    class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-semibold transition">Generate QR</button>
+      <!-- Generate Button -->
+      <button id="encrypt-btn" type="button"
+        class="w-full bg-zinc-100 hover:bg-white text-zinc-950 font-medium py-2.5 px-4 rounded-lg text-sm transition flex items-center justify-center gap-2 cursor-pointer mt-2">
+        Generate QR Code
+      </button>
 
-  <div id="qrcode-container" class="hidden flex flex-col items-center mt-4">
-    <div id="qrcode" class="bg-white rounded-lg shadow-lg"></div>
-    <button id="download-btn" class="mt-4 bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded-lg transition">Download QR</button>
-  </div>
+      <!-- Inline Alert -->
+      <div id="encrypt-alert" class="hidden p-3 rounded-lg border text-xs font-medium">
+        <span id="alert-text"></span>
+      </div>
 
-</main>
-<script type="module" src="./src/encrypt.js"></script>
+    </div>
+
+    <!-- Generated QR Result -->
+    <div id="qrcode-container" class="hidden border border-zinc-800 bg-zinc-900/40 rounded-xl p-5 flex flex-col items-center space-y-4">
+      <div class="flex items-center justify-between w-full">
+        <span class="text-xs font-medium text-zinc-300">Encrypted QR Code</span>
+        <span id="result-note-badge" class="hidden text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700"></span>
+      </div>
+
+      <div class="p-4 bg-white rounded-lg flex items-center justify-center">
+        <div id="qrcode"></div>
+      </div>
+
+      <div class="flex items-center gap-2 w-full pt-1">
+        <button id="download-btn" type="button"
+          class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 py-2 px-3 rounded-lg text-xs font-medium transition border border-zinc-700 cursor-pointer">
+          Download PNG
+        </button>
+        <button id="copy-payload-btn" type="button"
+          class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 py-2 px-3 rounded-lg text-xs font-medium transition border border-zinc-700 cursor-pointer">
+          <span id="copy-payload-text">Copy QR Payload</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+  
+  <script type="module" src="./src/encrypt.js"></script>
 </body>
 </html>

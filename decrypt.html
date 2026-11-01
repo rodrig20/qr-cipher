@@ -1,53 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="./favicon.svg">
-<title>QR Cipher - Decrypt QR Code</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Scan and decrypt encrypted QR codes back to readable text. Uses AES-GCM decryption. 100% client-side." />
-<style>body{background-color:#111827}</style>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <title>QR Cipher - Scan QR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Live scan and decrypt password-protected QR codes." />
+  <style>body{background-color:#09090b}</style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans antialiased">
 
-<header class="w-full flex items-center justify-between p-4 bg-gray-800 shadow-md fixed top-0 left-0 z-10">
-  <button id="back-btn" class="text-xl font-bold hover:text-blue-500">←</button>
-  <span class="font-semibold">Decode QR</span>
-  <div></div>
-</header>
+  <!-- Header -->
+  <header class="border-b border-zinc-800/80 px-4 sm:px-6 py-3.5 sticky top-0 bg-zinc-950/90 backdrop-blur z-20">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      <a href="./index.html" class="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition">
+        <span>←</span>
+        <span>Home</span>
+      </a>
+      <span class="text-xs font-medium text-zinc-300">Scan QR Code</span>
+      <a href="./encrypt.html" class="text-xs text-zinc-400 hover:text-zinc-200 transition">
+        Encrypt →
+      </a>
+    </div>
+  </header>
 
-<main class="pt-24 flex flex-col items-center px-4 space-y-4 w-full max-w-lg mx-auto">
+  <!-- Main Container -->
+  <main class="flex-1 max-w-xl mx-auto px-4 py-5 w-full flex flex-col space-y-4">
 
-  <video id="preview" class="w-full rounded-lg shadow-inner bg-gray-800 border border-gray-700" autoplay muted playsinline></video>
+    <!-- Viewfinder Container -->
+    <div class="relative w-full aspect-square max-w-sm mx-auto rounded-xl overflow-hidden bg-black border border-zinc-800 flex items-center justify-center">
+      
+      <!-- Live Video Feed -->
+      <video id="preview" class="w-full h-full object-cover" autoplay muted playsinline></video>
 
-  <div class="relative w-full mt-2">
-    <input id="passphrase" type="password"
-      class="w-full p-3 pr-10 rounded-lg shadow-inner bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      placeholder="Password / passphrase">
-    <button id="toggle-pass"
-      class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-200 p-1 rounded hover:bg-gray-700 flex items-center justify-center">
-      <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
-             a10.05 10.05 0 012.107-3.444m2.401-2.401
-             A9.953 9.953 0 0112 5c4.477 0 8.268 2.943
-             9.542 7a9.953 9.953 0 01-1.091 2.181
-             M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M3 3l18 18" />
-      </svg>
-    </button>
-  </div>
+      <!-- Viewfinder Guides -->
+      <div id="viewfinder-frame" class="absolute inset-0 pointer-events-none flex items-center justify-center p-6">
+        <div id="target-box" class="relative w-full h-full max-w-[250px] max-h-[250px] rounded-lg">
+          
+          <!-- Corner Markers -->
+          <div class="corner-marker absolute -top-0.5 -left-0.5 w-6 h-6 border-t-2 border-l-2 border-white/80 rounded-tl transition-colors duration-200"></div>
+          <div class="corner-marker absolute -top-0.5 -right-0.5 w-6 h-6 border-t-2 border-r-2 border-white/80 rounded-tr transition-colors duration-200"></div>
+          <div class="corner-marker absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-2 border-l-2 border-white/80 rounded-bl transition-colors duration-200"></div>
+          <div class="corner-marker absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-2 border-r-2 border-white/80 rounded-br transition-colors duration-200"></div>
 
-  <button id="capture-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg transition">Capture QR</button>
+        </div>
+      </div>
 
-  <div id="note-display" class="hidden w-full p-3 rounded-lg bg-blue-900 border border-blue-700 font-semibold"></div>
-  <div id="decrypted" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 min-h-[50px] whitespace-pre-wrap"></div>
+      <!-- Top Controls Toolbar -->
+      <div class="absolute top-3 right-3 flex items-center gap-1.5 z-10 pointer-events-auto">
+        <!-- Torch Button -->
+        <button id="torch-btn" type="button" title="Flashlight"
+          class="hidden p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </button>
 
-  <canvas id="canvas" style="display:none;"></canvas>
+        <!-- Flip Camera Button -->
+        <button id="flip-btn" type="button" title="Switch camera"
+          class="p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
 
-</main>
+        <!-- Upload Image Button -->
+        <label for="file-upload" title="Upload QR image"
+          class="cursor-pointer p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition flex items-center justify-center">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <input id="file-upload" type="file" accept="image/*" class="hidden" />
+        </label>
+      </div>
 
-<script type="module" src="./src/decrypt.js"></script>
+      <!-- Camera Error Fallback -->
+      <div id="camera-error" class="hidden absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center p-6 text-center space-y-3">
+        <p id="camera-error-msg" class="text-xs text-zinc-400">Camera access is unavailable.</p>
+        <label for="file-upload" class="cursor-pointer bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium py-1.5 px-3 rounded-lg border border-zinc-700 transition">
+          Upload Image Instead
+        </label>
+      </div>
+
+    </div>
+
+    <!-- Passphrase Form -->
+    <div class="border border-zinc-800 bg-zinc-900/40 rounded-xl p-4 space-y-3">
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <label for="passphrase" class="font-medium text-zinc-300">Decryption Passphrase</label>
+          <span class="text-zinc-500 text-[11px]">Enter before or after scanning</span>
+        </div>
+        <div class="relative">
+          <input id="passphrase" type="password"
+            class="w-full pl-3 pr-10 py-2 text-sm rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition"
+            placeholder="Enter passphrase to decrypt">
+          <button id="toggle-pass" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-200">
+            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+                   a10.05 10.05 0 012.107-3.444m2.401-2.401
+                   A9.953 9.953 0 0112 5c4.477 0 8.268 2.943
+                   9.542 7a9.953 9.953 0 01-1.091 2.181
+                   M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 3l18 18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Decrypt Action Button (Shown only when QR is detected without a password) -->
+      <button id="decrypt-btn" type="button"
+        class="hidden w-full bg-zinc-100 hover:bg-white text-zinc-950 font-medium py-2.5 px-4 rounded-lg text-sm transition cursor-pointer mt-2">
+        Decrypt Message
+      </button>
+
+      <!-- Inline Alert / Status Banner -->
+      <div id="alert-banner" class="hidden p-3 rounded-lg border text-xs font-medium">
+        <span id="alert-msg"></span>
+      </div>
+
+    </div>
+
+    <!-- Decrypted Result Display -->
+    <div id="result-card" class="hidden border border-zinc-800 bg-zinc-900/40 rounded-xl p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-emerald-400">Decrypted Content</span>
+        <span id="note-display" class="hidden text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700"></span>
+      </div>
+
+      <div id="decrypted" class="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-200 text-sm font-mono whitespace-pre-wrap break-words min-h-[60px] select-all"></div>
+
+      <div class="flex items-center justify-between pt-1">
+        <button id="rescan-btn" type="button"
+          class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-1.5 px-3 rounded-lg text-xs font-medium transition border border-zinc-700 cursor-pointer">
+          Scan another code
+        </button>
+
+        <button id="copy-btn" type="button"
+          class="bg-zinc-100 hover:bg-white text-zinc-950 py-1.5 px-3 rounded-lg text-xs font-medium transition cursor-pointer">
+          <span id="copy-btn-text">Copy text</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module" src="./src/decrypt.js"></script>
 </body>
 </html>
