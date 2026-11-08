@@ -27,101 +27,141 @@
   <!-- Main Container -->
   <main class="flex-1 max-w-xl mx-auto px-4 py-5 w-full flex flex-col space-y-4">
 
-    <!-- Viewfinder Container -->
-    <div class="relative w-full aspect-square max-w-sm mx-auto rounded-xl overflow-hidden bg-black border border-zinc-800 flex items-center justify-center">
-      
-      <!-- Live Video Feed -->
-      <video id="preview" class="w-full h-full object-cover" autoplay muted playsinline></video>
-
-      <!-- Viewfinder Guides -->
-      <div id="viewfinder-frame" class="absolute inset-0 pointer-events-none flex items-center justify-center p-6">
-        <div id="target-box" class="relative w-full h-full max-w-[250px] max-h-[250px] rounded-lg">
-          
-          <!-- Corner Markers -->
-          <div class="corner-marker absolute -top-0.5 -left-0.5 w-6 h-6 border-t-2 border-l-2 border-white/80 rounded-tl transition-colors duration-200"></div>
-          <div class="corner-marker absolute -top-0.5 -right-0.5 w-6 h-6 border-t-2 border-r-2 border-white/80 rounded-tr transition-colors duration-200"></div>
-          <div class="corner-marker absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-2 border-l-2 border-white/80 rounded-bl transition-colors duration-200"></div>
-          <div class="corner-marker absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-2 border-r-2 border-white/80 rounded-br transition-colors duration-200"></div>
-
-        </div>
-      </div>
-
-      <!-- Top Controls Toolbar -->
-      <div class="absolute top-3 right-3 flex items-center gap-1.5 z-10 pointer-events-auto">
-        <!-- Torch Button -->
-        <button id="torch-btn" type="button" title="Flashlight"
-          class="hidden p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </button>
-
-        <!-- Flip Camera Button -->
-        <button id="flip-btn" type="button" title="Switch camera"
-          class="p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
-
-        <!-- Upload Image Button -->
-        <label for="file-upload" title="Upload QR image"
-          class="cursor-pointer p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition flex items-center justify-center">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <input id="file-upload" type="file" accept="image/*" class="hidden" />
-        </label>
-      </div>
-
-      <!-- Camera Error Fallback -->
-      <div id="camera-error" class="hidden absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center p-6 text-center space-y-3">
-        <p id="camera-error-msg" class="text-xs text-zinc-400">Camera access is unavailable.</p>
-        <label for="file-upload" class="cursor-pointer bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium py-1.5 px-3 rounded-lg border border-zinc-700 transition">
-          Upload Image Instead
-        </label>
-      </div>
-
+    <!-- Mode Toggle -->
+    <div class="inline-flex self-center rounded-lg border border-zinc-800 bg-zinc-900/60 p-1 gap-1">
+      <button id="mode-camera" type="button"
+        class="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium transition bg-zinc-800 text-zinc-100">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        Scan
+      </button>
+      <button id="mode-text" type="button"
+        class="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium transition text-zinc-400 hover:text-zinc-200">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Text
+      </button>
     </div>
 
-    <!-- Passphrase Form -->
-    <div class="border border-zinc-800 bg-zinc-900/40 rounded-xl p-4 space-y-3">
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between text-xs">
-          <label for="passphrase" class="font-medium text-zinc-300">Decryption Passphrase</label>
-          <span class="text-zinc-500 text-[11px]">Enter before or after scanning</span>
+    <!-- Camera Mode -->
+    <div id="camera-mode" class="flex-1 w-full">
+
+      <!-- Viewfinder Container -->
+      <div class="relative w-full aspect-square max-w-sm mx-auto rounded-xl overflow-hidden bg-black border border-zinc-800 flex items-center justify-center">
+        
+        <!-- Live Video Feed -->
+        <video id="preview" class="w-full h-full object-cover" autoplay muted playsinline></video>
+
+        <!-- Viewfinder Guides -->
+        <div id="viewfinder-frame" class="absolute inset-0 pointer-events-none flex items-center justify-center p-6">
+          <div id="target-box" class="relative w-full h-full max-w-[250px] max-h-[250px] rounded-lg">
+            
+            <!-- Corner Markers -->
+            <div class="corner-marker absolute -top-0.5 -left-0.5 w-6 h-6 border-t-2 border-l-2 border-white/80 rounded-tl transition-colors duration-200"></div>
+            <div class="corner-marker absolute -top-0.5 -right-0.5 w-6 h-6 border-t-2 border-r-2 border-white/80 rounded-tr transition-colors duration-200"></div>
+            <div class="corner-marker absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-2 border-l-2 border-white/80 rounded-bl transition-colors duration-200"></div>
+            <div class="corner-marker absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-2 border-r-2 border-white/80 rounded-br transition-colors duration-200"></div>
+
+          </div>
         </div>
-        <div class="relative">
-          <input id="passphrase" type="password"
-            class="w-full pl-3 pr-10 py-2 text-sm rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition"
-            placeholder="Enter passphrase to decrypt">
-          <button id="toggle-pass" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-200">
-            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
-                   a10.05 10.05 0 012.107-3.444m2.401-2.401
-                   A9.953 9.953 0 0112 5c4.477 0 8.268 2.943
-                   9.542 7a9.953 9.953 0 01-1.091 2.181
-                   M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M3 3l18 18" />
+
+        <!-- Top Controls Toolbar -->
+        <div class="absolute top-3 right-3 flex items-center gap-1.5 z-10 pointer-events-auto">
+          <!-- Torch Button -->
+          <button id="torch-btn" type="button" title="Flashlight"
+            class="hidden p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </button>
+
+          <!-- Flip Camera Button -->
+          <button id="flip-btn" type="button" title="Switch camera"
+            class="p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+
+          <!-- Upload Image Button -->
+          <label for="file-upload" title="Upload QR image"
+            class="cursor-pointer p-2 rounded-md bg-black/75 backdrop-blur border border-zinc-700/60 text-zinc-300 hover:text-white transition flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <input id="file-upload" type="file" accept="image/*" class="hidden" />
+          </label>
         </div>
-      </div>
 
-      <!-- Decrypt Action Button (Shown only when QR is detected without a password) -->
-      <button id="decrypt-btn" type="button"
-        class="hidden w-full bg-zinc-100 hover:bg-white text-zinc-950 font-medium py-2.5 px-4 rounded-lg text-sm transition cursor-pointer mt-2">
-        Decrypt Message
-      </button>
+        <!-- Camera Error Fallback -->
+        <div id="camera-error" class="hidden absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center p-6 text-center space-y-3">
+          <p id="camera-error-msg" class="text-xs text-zinc-400">Camera access is unavailable.</p>
+          <label for="file-upload" class="cursor-pointer bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium py-1.5 px-3 rounded-lg border border-zinc-700 transition">
+            Upload Image Instead
+          </label>
+        </div>
 
-      <!-- Inline Alert / Status Banner -->
-      <div id="alert-banner" class="hidden p-3 rounded-lg border text-xs font-medium">
-        <span id="alert-msg"></span>
       </div>
 
     </div>
+
+    <!-- Text Mode -->
+    <div id="text-mode" class="hidden flex-1 w-full space-y-4">
+
+      <!-- Paste QR Text -->
+      <div class="border border-zinc-800 bg-zinc-900/40 rounded-xl p-5 space-y-3">
+        <label for="paste-payload" class="block text-sm font-medium text-zinc-200">
+          QR payload
+        </label>
+        <p class="text-xs text-zinc-500 -mt-2">Paste the full text read from the QR code.</p>
+        <textarea id="paste-payload" rows="4"
+          class="w-full p-3 text-sm rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition font-mono resize-none"
+          placeholder="NOTE:ABCDEF123456..."></textarea>
+      </div>
+
+    </div>
+
+    <!-- Note Banner (shown when a QR is detected) -->
+    <div id="scan-note-banner" class="hidden px-4 py-2.5 rounded-lg border border-zinc-700 bg-zinc-900/80 text-zinc-200 text-xs font-mono">
+      <span id="scan-note-text"></span>
+    </div>
+
+    <!-- Passphrase (shared between camera and text modes) -->
+    <div class="border border-zinc-800 bg-zinc-900/40 rounded-xl p-5 space-y-3">
+      <label for="passphrase" class="block text-sm font-medium text-zinc-200">
+        Passphrase
+      </label>
+      <div class="relative">
+        <input id="passphrase" type="password"
+          class="w-full pl-3 pr-10 py-2.5 text-sm rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition"
+          placeholder="Enter passphrase">
+        <button id="toggle-pass" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-zinc-300">
+          <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+                 a10.05 10.05 0 012.107-3.444m2.401-2.401
+                 A9.953 9.953 0 0112 5c4.477 0 8.268 2.943
+                 9.542 7a9.953 9.953 0 01-1.091 2.181
+                 M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 3l18 18" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Inline Alert -->
+    <div id="alert-banner" class="hidden p-3 rounded-lg border text-xs font-medium">
+      <span id="alert-msg"></span>
+    </div>
+
+    <!-- Decrypt Button (shared between modes) -->
+    <button id="decrypt-btn" type="button"
+      class="w-full bg-zinc-100 hover:bg-white text-zinc-950 font-medium py-2.5 px-4 rounded-lg text-sm transition cursor-pointer">
+      Decrypt
+    </button>
 
     <!-- Decrypted Result Display -->
     <div id="result-card" class="hidden border border-zinc-800 bg-zinc-900/40 rounded-xl p-4 space-y-3">

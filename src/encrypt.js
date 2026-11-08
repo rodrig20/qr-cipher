@@ -1,18 +1,16 @@
-import QRCode from "qrcode/lib/browser.js";
+import QRCode from "https://esm.sh/qrcode@1.5.4";
 import {
   deriveKeys,
   setupPasswordToggle,
   setLoading,
   showToast,
   copyToClipboard,
+  base45Encode,
+  sanitizeNote,
 } from "./shared";
 import "./input.css";
 
 // --- Encrypt-only helpers ---
-
-function bufferToBase64(buf) {
-  return btoa(String.fromCharCode(...buf));
-}
 
 function concatBuffers(...arrays) {
   const total = arrays.reduce((s, a) => s + a.length, 0);
@@ -25,13 +23,6 @@ function concatBuffers(...arrays) {
   return out;
 }
 
-function sanitizeNote(note) {
-  return note
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9 _-]/g, "");
-}
-
 // --- Encrypt-specific crypto helpers ---
 
 function generateRandomComponents() {
@@ -42,7 +33,7 @@ function generateRandomComponents() {
 }
 
 async function encryptText(text, password, salt, iv) {
-  const { key, hmacKey } = await deriveKeys(password, salt, "encrypt");
+  const { key } = await deriveKeys(password, salt, "encrypt");
   const ciphertext = new Uint8Array(
     await crypto.subtle.encrypt(
       { name: "AES-GCM", iv },
@@ -50,19 +41,27 @@ async function encryptText(text, password, salt, iv) {
       new TextEncoder().encode(text),
     ),
   );
-  const hmac = new Uint8Array(
-    await crypto.subtle.sign("HMAC", hmacKey, ciphertext),
-  );
-  return { ciphertext, hmac };
+  return { ciphertext };
 }
 
-function encodePayload(ciphertext, salt, iv, hmac) {
-  const binaryPayload = concatBuffers(salt, iv, ciphertext, hmac);
-  return bufferToBase64(binaryPayload);
+function encodePayload(ciphertext, salt, iv) {
+  const binaryPayload = concatBuffers(salt, iv, ciphertext);
+  const length = binaryPayload.length;
+  const prefixed = new Uint8Array(2 + length);
+  prefixed[0] = (length >> 8) & 0xff;
+  prefixed[1] = length & 0xff;
+  prefixed.set(binaryPayload, 2);
+  // Pad to an even byte count so base45 (3 chars per 2 bytes) never emits a
+  // trailing single byte, which it cannot represent unless < 45.
+  const padded =
+    prefixed.length % 2 === 0
+      ? prefixed
+      : concatBuffers(prefixed, new Uint8Array([0]));
+  return base45Encode(padded);
 }
 
-function buildQRText(note, payloadB64) {
-  return note ? `${note}|${payloadB64}` : payloadB64;
+function buildQRText(note, payload) {
+  return `${note}:${payload}`;
 }
 
 function addWhiteBorder(canvas) {
@@ -85,7 +84,7 @@ function renderQRCodeCanvas(qrText, qrDiv, qrContainer) {
     {
       width: 280,
       margin: 1,
-      errorCorrectionLevel: "M",
+      errorCorrectionLevel: "L",
     },
     function (error, canvas) {
       if (error) {
@@ -127,7 +126,7 @@ function hideEncryptAlert() {
   if (alertEl) alertEl.classList.add("hidden");
 }
 
-let currentPayloadB64 = "";
+let currentPayload = "";
 
 async function handleEncrypt(elements) {
   const { noteInput, plainTextInput, passwordInput, qrDiv, qrContainer, encryptBtn, noteBadge } = elements;
@@ -155,10 +154,10 @@ async function handleEncrypt(elements) {
   try {
     const sanitizedNote = sanitizeNote(note);
     const { salt, iv } = generateRandomComponents();
-    const { ciphertext, hmac } = await encryptText(text, password, salt, iv);
-    const payloadB64 = encodePayload(ciphertext, salt, iv, hmac);
-    const qrText = buildQRText(sanitizedNote, payloadB64);
-    currentPayloadB64 = qrText;
+    const { ciphertext } = await encryptText(text, password, salt, iv);
+    const payload = encodePayload(ciphertext, salt, iv);
+    const qrText = buildQRText(sanitizedNote, payload);
+    currentPayload = qrText;
 
     if (sanitizedNote && noteBadge) {
       noteBadge.textContent = sanitizedNote;
@@ -237,8 +236,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   copyPayloadBtn.onclick = () => {
-    if (currentPayloadB64) {
-      copyToClipboard(currentPayloadB64, copyPayloadText);
+    if (currentPayload) {
+      copyToClipboard(currentPayload, copyPayloadText);
     }
   };
 });

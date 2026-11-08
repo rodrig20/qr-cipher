@@ -1,4 +1,4 @@
-import { argon2id } from "hash-wasm";
+import { argon2id } from "https://esm.sh/hash-wasm@4.12.0";
 
 // --- Key derivation ---
 
@@ -9,31 +9,19 @@ export async function deriveKeys(password, salt, mode) {
     parallelism: 4,
     iterations: 6,
     memorySize: 262144,
-    hashLength: 64,
+    hashLength: 32,
     outputType: "binary",
   });
 
-  const aesKey = material.slice(0, 32);
-  const hmacRawKey = material.slice(32, 64);
-
   const key = await crypto.subtle.importKey(
     "raw",
-    aesKey,
+    material,
     { name: "AES-GCM", length: 256 },
     false,
     [mode],
   );
 
-  const hmacKeyUsage = mode === "encrypt" ? "sign" : "verify";
-  const hmacKey = await crypto.subtle.importKey(
-    "raw",
-    hmacRawKey,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    [hmacKeyUsage],
-  );
-
-  return { key, hmacKey };
+  return { key };
 }
 
 // --- Password visibility toggle ---
@@ -65,13 +53,51 @@ export function setupPasswordToggle(passwordInput, togglePassBtn, eyeIcon) {
   };
 }
 
+// --- Base45 encoding (QR alphanumeric-compatible, no Node dependency) ---
+
+// Base45 alphabet matches the QR Code alphanumeric charset, so the QR library
+// renders the encoded output in alphanumeric mode.
+const BASE45_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*./+-:";
+const BASE45_RADIX = 45;
+const BASE45_SQUARE = BASE45_RADIX * BASE45_RADIX;
+
+export function base45Encode(buf) {
+  const out = [];
+  for (let i = 0; i < buf.length; i += 2) {
+    const x = (buf[i] << 8) | buf[i + 1];
+    out.push(BASE45_ALPHABET[Math.floor(x / BASE45_SQUARE)]);
+    out.push(BASE45_ALPHABET[Math.floor((x % BASE45_SQUARE) / BASE45_RADIX)]);
+    out.push(BASE45_ALPHABET[x % BASE45_RADIX]);
+  }
+  return out.join("");
+}
+
+export function base45Decode(text) {
+  const out = [];
+  for (let i = 0; i < text.length; i += 3) {
+    const a = BASE45_ALPHABET.indexOf(text[i]);
+    const b = BASE45_ALPHABET.indexOf(text[i + 1]);
+    const c = BASE45_ALPHABET.indexOf(text[i + 2]);
+    if (a < 0 || b < 0 || c < 0) throw new Error("base45: invalid character");
+    const v = a * BASE45_SQUARE + b * BASE45_RADIX + c;
+    out.push((v >> 8) & 0xff, v & 0xff);
+  }
+  return new Uint8Array(out);
+}
+
+// Sanitize note to QR alphanumeric-safe characters only:
+// A-Z, a-z, 0-9 and space. Everything else is removed.
+export function sanitizeNote(note) {
+  return note.replace(/[^A-Za-z0-9 ]/g, "");
+}
+
 // --- Utility & Feedback ---
 
 export function setLoading(btn, loading, originalText) {
   if (!btn) return;
   if (loading) {
     btn.disabled = true;
-    btn.dataset.originalContent = originalText || btn.innerHTML;
+    btn.dataset.originalContent = btn.innerHTML;
     btn.textContent = originalText || "Processing...";
     btn.classList.add("opacity-50", "cursor-not-allowed");
   } else {

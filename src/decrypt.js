@@ -1,36 +1,26 @@
-import { BrowserQRCodeReader } from "@zxing/library";
+import { BrowserQRCodeReader } from "https://esm.sh/@zxing/library@0.23.0";
 import {
   deriveKeys,
   setupPasswordToggle,
   showToast,
   copyToClipboard,
   playFeedbackTone,
+  base45Decode,
 } from "./shared";
 import "./input.css";
 
 // --- Decrypt Crypto Helpers ---
 
-function base64ToBuffer(b64) {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-}
-
 function extractBinaryComponents(raw) {
-  const hmacSize = 32;
   return {
     salt: raw.slice(0, 16),
     iv: raw.slice(16, 28),
-    data: raw.slice(28, raw.length - hmacSize),
-    hmac: raw.slice(raw.length - hmacSize),
+    data: raw.slice(28),
   };
 }
 
-async function decryptPayload(password, salt, iv, data, storedHmac) {
-  const { key, hmacKey } = await deriveKeys(password, salt, "decrypt");
-
-  const hmacValid = await crypto.subtle.verify("HMAC", hmacKey, storedHmac, data);
-  if (!hmacValid) {
-    throw new Error("WRONG_PASSWORD");
-  }
+async function decryptPayload(password, salt, iv, data) {
+  const { key } = await deriveKeys(password, salt, "decrypt");
 
   const decrypted = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv },
@@ -41,10 +31,10 @@ async function decryptPayload(password, salt, iv, data, storedHmac) {
 }
 
 function parseQRData(qrText) {
-  const lastPipe = qrText.lastIndexOf("|");
-  const note = lastPipe > 0 ? qrText.slice(0, lastPipe) : null;
-  const payloadB64 = lastPipe > 0 ? qrText.slice(lastPipe + 1) : qrText;
-  return { note, payloadB64 };
+  const firstColon = qrText.indexOf(":");
+  const note = firstColon > 0 ? qrText.slice(0, firstColon) : null;
+  const payload = firstColon >= 0 ? qrText.slice(firstColon + 1) : qrText;
+  return { note, payload };
 }
 
 // --- Application State ---
@@ -79,6 +69,11 @@ let fileUploadInput;
 let cameraErrorEl;
 let cameraErrorMsg;
 let cornerMarkers;
+let pastePayloadEl;
+let modeCameraBtn;
+let modeTextBtn;
+let cameraModeEl;
+let textModeEl;
 
 // --- Alert Helpers ---
 
@@ -137,28 +132,35 @@ async function executeDecryption(qrText, password) {
   }
 
   try {
-    const { note, payloadB64 } = parseQRData(qrText);
+    const { note, payload } = parseQRData(qrText);
 
-    if (!payloadB64 || payloadB64.trim() === "") {
+    if (!payload || payload.trim() === "") {
       showAlert("Invalid QR code: missing encrypted payload.", "error");
       return;
     }
 
     let raw;
     try {
-      raw = base64ToBuffer(payloadB64);
+      raw = base45Decode(payload);
     } catch {
-      showAlert("Invalid QR code: corrupted base64 data.", "error");
+      showAlert("Invalid QR code: corrupted payload data.", "error");
       return;
     }
 
-    if (raw.length < 60) {
+    if (raw.length < 2 + 60) {
       showAlert("Invalid QR code: payload data too short.", "error");
       return;
     }
 
-    const { salt, iv, data, hmac } = extractBinaryComponents(raw);
-    const text = await decryptPayload(password, salt, iv, data, hmac);
+    const length = (raw[0] << 8) | raw[1];
+    if (raw.length < 2 + length) {
+      showAlert("Invalid QR code: truncated payload data.", "error");
+      return;
+    }
+
+    const payloadBytes = raw.slice(2, 2 + length);
+    const { salt, iv, data } = extractBinaryComponents(payloadBytes);
+    const text = await decryptPayload(password, salt, iv, data);
 
     if (note) {
       noteDisplay.textContent = note;
@@ -169,13 +171,13 @@ async function executeDecryption(qrText, password) {
 
     decryptedEl.textContent = text;
     resultCard.classList.remove("hidden");
-    decryptBtn?.classList.add("hidden");
     showToast("Decrypted successfully.", "success");
     hideAlert();
+    // Hide the top note banner once decrypted
+    const banner = document.getElementById("scan-note-banner");
+    if (banner) banner.classList.add("hidden");
   } catch (err) {
-    if (err.message === "WRONG_PASSWORD") {
-      showAlert("Incorrect passphrase (HMAC integrity check failed).", "error");
-    } else if (err.name === "OperationError" || err.message?.includes("operation failed")) {
+    if (err.name === "OperationError" || err.message?.includes("operation failed")) {
       showAlert("Decryption failed. Please check your passphrase.", "error");
     } else {
       showAlert(`Error: ${err.message || "unexpected error occurred"}.`, "error");
@@ -185,9 +187,52 @@ async function executeDecryption(qrText, password) {
     isDecodingBusy = false;
     if (decryptBtn) {
       decryptBtn.disabled = false;
-      decryptBtn.textContent = "Decrypt Message";
+      decryptBtn.textContent = "Decrypt";
     }
   }
+}
+
+// --- Note Banner Helper ---
+
+function showNoteFromQR(qrText) {
+  try {
+    const { note } = parseQRData(qrText);
+    const noteTextEl = document.getElementById("scan-note-text");
+    const banner = document.getElementById("scan-note-banner");
+    if (note && noteTextEl && banner) {
+      noteTextEl.textContent = note;
+      banner.classList.remove("hidden");
+    }
+  } catch {
+    // ignore malformed input
+  }
+}
+
+// --- Unified Decrypt (works in both camera and text modes) ---
+
+function isTextModeActive() {
+  return Boolean(textModeEl && !textModeEl.classList.contains("hidden"));
+}
+
+function getActiveQRText() {
+  if (isTextModeActive()) {
+    return pastePayloadEl?.value?.trim() || "";
+  }
+  return scannedQRText || "";
+}
+
+function startDecryption() {
+  const textMode = isTextModeActive();
+  const qrText = getActiveQRText();
+
+  if (!qrText) {
+    showAlert(textMode ? "Paste the QR code text first." : "Scan a QR code first.", "warning");
+    (textMode ? pastePayloadEl : passwordInput)?.focus();
+    return;
+  }
+
+  showNoteFromQR(qrText);
+  executeDecryption(qrText, passwordInput?.value || "");
 }
 
 // --- QR Detection Handler ---
@@ -212,7 +257,15 @@ function onQRCodeFound(codeData) {
     // Password already entered: decrypt immediately without showing button
     executeDecryption(codeData, password);
   } else {
-    // No password entered: show Decrypt button and wait for user to click it
+    // No password entered: show only the note at the top, wait for password
+    const { note } = parseQRData(codeData);
+    if (note) {
+      const noteTextEl = document.getElementById("scan-note-text");
+      const banner = document.getElementById("scan-note-banner");
+      if (noteTextEl) noteTextEl.textContent = note;
+      if (banner) banner.classList.remove("hidden");
+    }
+    resultCard?.classList.add("hidden");
     decryptBtn?.classList.remove("hidden");
     showAlert("QR code detected. Enter your passphrase and click Decrypt.", "warning");
     passwordInput?.focus();
@@ -234,7 +287,6 @@ async function initCamera() {
   }
 
   cameraErrorEl?.classList.add("hidden");
-  decryptBtn?.classList.add("hidden");
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -348,8 +400,18 @@ function resetScanner() {
   scannedQRText = null;
   hideAlert();
   resultCard?.classList.add("hidden");
-  decryptBtn?.classList.add("hidden");
+  noteDisplay?.classList.add("hidden");
+  const banner = document.getElementById("scan-note-banner");
+  if (banner) banner.classList.add("hidden");
   setCornerColor(false);
+
+  if (isTextModeActive()) {
+    // Text mode: clear the payload input, never touch the camera
+    if (pastePayloadEl) pastePayloadEl.value = "";
+    pastePayloadEl?.focus();
+    return;
+  }
+
   isScanningLive = true;
   initCamera();
 }
@@ -413,21 +475,59 @@ function initApp() {
   cameraErrorEl = document.getElementById("camera-error");
   cameraErrorMsg = document.getElementById("camera-error-msg");
   cornerMarkers = document.querySelectorAll(".corner-marker");
+  pastePayloadEl = document.getElementById("paste-payload");
+  modeCameraBtn = document.getElementById("mode-camera");
+  modeTextBtn = document.getElementById("mode-text");
+  cameraModeEl = document.getElementById("camera-mode");
+  textModeEl = document.getElementById("text-mode");
 
   setupPasswordToggle(passwordInput, togglePassBtn, eyeIcon);
 
-  // Decrypt on button click
-  decryptBtn.onclick = () => {
-    if (scannedQRText) {
-      executeDecryption(scannedQRText, passwordInput.value);
+  // Mode toggle: camera <-> text
+  function switchMode(mode) {
+    const isCamera = mode === "camera";
+    cameraModeEl?.classList.toggle("hidden", !isCamera);
+    textModeEl?.classList.toggle("hidden", isCamera);
+
+    if (rescanBtn) {
+      rescanBtn.textContent = isCamera ? "Scan another code" : "Enter another code";
     }
-  };
+
+    if (isCamera) {
+      modeCameraBtn?.classList.add("bg-zinc-800", "text-zinc-100");
+      modeCameraBtn?.classList.remove("text-zinc-400");
+      modeTextBtn?.classList.remove("bg-zinc-800", "text-zinc-100");
+      modeTextBtn?.classList.add("text-zinc-400");
+      initCamera();
+    } else {
+      modeTextBtn?.classList.add("bg-zinc-800", "text-zinc-100");
+      modeTextBtn?.classList.remove("text-zinc-400");
+      modeCameraBtn?.classList.remove("bg-zinc-800", "text-zinc-100");
+      modeCameraBtn?.classList.add("text-zinc-400");
+      try {
+        codeReader.reset();
+      } catch {
+        // ignore
+      }
+      if (currentStream) {
+        currentStream.getTracks().forEach((t) => t.stop());
+        currentStream = null;
+      }
+      isScanningLive = false;
+    }
+  }
+
+  modeCameraBtn.onclick = () => switchMode("camera");
+  modeTextBtn.onclick = () => switchMode("text");
+
+  // Decrypt on button click (works in both camera and text modes)
+  decryptBtn.onclick = () => startDecryption();
 
   // Decrypt on Enter in passphrase input
   passwordInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && scannedQRText) {
+    if (e.key === "Enter") {
       e.preventDefault();
-      executeDecryption(scannedQRText, passwordInput.value);
+      startDecryption();
     }
   });
 
