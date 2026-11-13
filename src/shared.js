@@ -1,4 +1,4 @@
-import { argon2id } from "https://esm.sh/hash-wasm@4.12.0";
+import { argon2id } from "../vendor/hash-wasm.js";
 
 // --- Key derivation ---
 

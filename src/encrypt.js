@@ -1,4 +1,4 @@
-import QRCode from "https://esm.sh/qrcode@1.5.4";
+import QRCode from "../vendor/qrcode.js";
 import {
   deriveKeys,
   setupPasswordToggle,

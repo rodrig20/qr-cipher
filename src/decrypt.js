@@ -1,5 +1,5 @@
-import { BrowserQRCodeReader } from "https://esm.sh/@zxing/library@0.23.0";
-import jsQR from "https://esm.sh/jsqr@1.4.0";
+import { BrowserQRCodeReader } from "../vendor/zxing-library.js";
+import jsQR from "../vendor/jsqr.js";
 import {
   deriveKeys,
   setupPasswordToggle,
@@ -152,12 +152,18 @@ async function executeDecryption(qrText, password) {
       return;
     }
 
-    if (raw.length < 2 + 60) {
+    if (raw.length < 2) {
       showAlert("Invalid QR code: payload data too short.", "error");
       return;
     }
 
     const length = (raw[0] << 8) | raw[1];
+    // Minimum payload: salt (16) + IV (12) + AES-GCM tag (16)
+    if (length < 16 + 12 + 16) {
+      showAlert("Invalid QR code: payload data too short.", "error");
+      return;
+    }
+
     if (raw.length < 2 + length) {
       showAlert("Invalid QR code: truncated payload data.", "error");
       return;
