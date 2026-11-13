@@ -1,4 +1,5 @@
 import { BrowserQRCodeReader } from "https://esm.sh/@zxing/library@0.23.0";
+import jsQR from "https://esm.sh/jsqr@1.4.0";
 import {
   deriveKeys,
   setupPasswordToggle,
@@ -47,6 +48,10 @@ let isTorchOn = false;
 let isScanningLive = true;
 let scannedQRText = null;
 let isDecodingBusy = false;
+let scanRafId = null;
+let nativeDetector = null;
+let scanCanvas = null;
+let scanCtx = null;
 
 // --- DOM Elements ---
 
@@ -242,6 +247,7 @@ function onQRCodeFound(codeData) {
 
   scannedQRText = codeData;
   isScanningLive = false;
+  stopScanLoop();
   playFeedbackTone();
   setCornerColor(true);
 
@@ -272,9 +278,94 @@ function onQRCodeFound(codeData) {
   }
 }
 
+// --- Live Scanning Loop ---
+//
+// ZXing's decodeFromVideoElementContinuously() builds its own internal video
+// element and its promise rejects silently under browser autoplay policies, so
+// the preview kept rendering while nothing was ever decoded. We drive the frame
+// loop ourselves instead: native BarcodeDetector when the browser exposes it
+// (hardware accelerated), jsQR on canvas frames otherwise.
+
+async function createNativeDetector() {
+  if (!("BarcodeDetector" in window)) return null;
+  try {
+    const formats = await window.BarcodeDetector.getSupportedFormats();
+    if (!formats.includes("qr_code")) return null;
+    return new window.BarcodeDetector({ formats: ["qr_code"] });
+  } catch {
+    return null;
+  }
+}
+
+function stopScanLoop() {
+  isScanningLive = false;
+  if (scanRafId !== null) {
+    cancelAnimationFrame(scanRafId);
+    scanRafId = null;
+  }
+}
+
+function startScanLoop() {
+  stopScanLoop();
+  isScanningLive = true;
+  setCornerColor(false);
+
+  if (!scanCanvas) {
+    scanCanvas = document.createElement("canvas");
+    scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
+  }
+
+  const tick = async () => {
+    if (!isScanningLive || !videoEl) return;
+
+    const width = videoEl.videoWidth;
+    const height = videoEl.videoHeight;
+
+    if (videoEl.readyState >= 2 && width > 0 && height > 0) {
+      // Fast path: browser-native detection
+      if (nativeDetector) {
+        try {
+          const codes = await nativeDetector.detect(videoEl);
+          if (isScanningLive && codes.length > 0 && codes[0]?.rawValue) {
+            onQRCodeFound(codes[0].rawValue);
+            return;
+          }
+        } catch {
+          nativeDetector = null; // fall back to jsQR for the remaining frames
+        }
+      }
+
+      // General path: decode a canvas copy of the current frame
+      try {
+        if (scanCanvas.width !== width) scanCanvas.width = width;
+        if (scanCanvas.height !== height) scanCanvas.height = height;
+        scanCtx.drawImage(videoEl, 0, 0, width, height);
+        const frame = scanCtx.getImageData(0, 0, width, height);
+        const found = jsQR(frame.data, frame.width, frame.height, {
+          inversionAttempts: "attemptBoth",
+        });
+        if (isScanningLive && found?.data) {
+          onQRCodeFound(found.data);
+          return;
+        }
+      } catch {
+        // ignore transient per-frame errors
+      }
+    }
+
+    // Re-schedule only if the loop was not stopped during an await above
+    if (isScanningLive) {
+      scanRafId = requestAnimationFrame(tick);
+    }
+  };
+
+  scanRafId = requestAnimationFrame(tick);
+}
+
 // --- Live Camera Management ---
 
 async function initCamera() {
+  stopScanLoop();
   try {
     codeReader.reset();
   } catch {
@@ -325,43 +416,8 @@ async function initCamera() {
       }
     }
 
-    isScanningLive = true;
-    setCornerColor(false);
-
-    // Continuous video scanning with ZXing
-    codeReader.decodeFromVideoElementContinuously(videoEl, (result, error) => {
-      if (result && isScanningLive) {
-        onQRCodeFound(result.getText());
-      }
-    });
-
-    // Native BarcodeDetector pass if supported
-    if ("BarcodeDetector" in window) {
-      try {
-        const formats = await window.BarcodeDetector.getSupportedFormats();
-        if (formats.includes("qr_code")) {
-          const nativeDetector = new window.BarcodeDetector({ formats: ["qr_code"] });
-          const scanNative = async () => {
-            if (!isScanningLive) return;
-            if (videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0) {
-              try {
-                const barcodes = await nativeDetector.detect(videoEl);
-                if (barcodes.length > 0 && barcodes[0].rawValue && isScanningLive) {
-                  onQRCodeFound(barcodes[0].rawValue);
-                  return;
-                }
-              } catch {
-                // ignore
-              }
-            }
-            if (isScanningLive) requestAnimationFrame(scanNative);
-          };
-          requestAnimationFrame(scanNative);
-        }
-      } catch {
-        // ignore
-      }
-    }
+    nativeDetector = await createNativeDetector();
+    startScanLoop();
   } catch (err) {
     console.error("Camera startup error:", err);
     let message = "Camera access unavailable.";
@@ -509,6 +565,7 @@ function initApp() {
       } catch {
         // ignore
       }
+      stopScanLoop();
       if (currentStream) {
         currentStream.getTracks().forEach((t) => t.stop());
         currentStream = null;
@@ -550,6 +607,7 @@ function initApp() {
   initCamera();
 
   window.addEventListener("beforeunload", () => {
+    stopScanLoop();
     try {
       codeReader.reset();
     } catch {
